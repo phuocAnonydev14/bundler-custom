@@ -311,6 +311,25 @@ export abstract class BaseAccountAPI {
     };
   }
 
+  async addPaymasterToUserOp(partialUserOp: Partial<UserOperation>){
+    if (this.paymasterAPI != null) {
+      // fill (partial) preVerificationGas (all except the cost of the generated paymasterAndData)
+      const pmFields = await this.paymasterAPI.getPaymasterData(partialUserOp);
+      if (pmFields != null) {
+        return {
+          ...partialUserOp,
+          paymaster: pmFields.paymaster,
+          paymasterVerificationGasLimit: 3e5,
+          paymasterPostOpGasLimit: 0,
+          paymasterData: pmFields.paymasterData,
+        } ;
+      }
+    }
+    
+    return partialUserOp
+    
+  }
+  
   /**
    * Sign the filled userOp.
    * @param userOp the UserOperation to sign (with signature field ignored)

@@ -1,6 +1,6 @@
 {
   "name": "account-abstraction-anony-sdk",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "main": "./dist/src/index.js",
   "license": "MIT",
   "files": [
@@ -18,7 +18,7 @@
     "watch-tsc": "tsc -w --preserveWatchOutput"
   },
   "dependencies": {
-    "account-abstraction-anony-utils": "^0.6.7",
+    "account-abstraction-anony-utils": "^0.6.8",
     "@ethersproject/abstract-signer": "^5.7.0",
     "@ethersproject/networks": "^5.7.0",
     "@ethersproject/properties": "^5.7.0",
