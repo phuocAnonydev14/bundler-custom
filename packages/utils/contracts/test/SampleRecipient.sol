@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 import "@account-abstraction/contracts/samples/SimpleAccount.sol";
 
 contract SampleRecipient {
-
     SimpleAccount wallet;
 
     event Sender(address txOrigin, address msgSender, string message);
@@ -17,6 +16,6 @@ contract SampleRecipient {
 
     // solhint-disable-next-line
     function reverting() public {
-        revert( "test revert");
+        revert("test revert");
     }
 }

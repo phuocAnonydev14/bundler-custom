@@ -4,7 +4,7 @@ import {
   SimpleAccountAPI,
   PaymasterAPI,
   HttpRpcClient,
-} from "account-abstraction-anony-sdk";
+} from "@account-abstraction/sdk";
 import {
   DeterministicDeployer,
   IEntryPoint,
@@ -12,24 +12,32 @@ import {
   PackedUserOperation,
   SimpleAccountFactory__factory,
   fillSignAndPack,
-} from "account-abstraction-anony-utils";
-import { parseEther, hexZeroPad, hexDataSlice } from "ethers/lib/utils";
+  packUserOp,
+} from "aa-conla-utils";
+import {
+  parseEther,
+  hexZeroPad,
+  hexDataSlice,
+  formatEther,
+} from "ethers/lib/utils";
 import {
   EntryPoint__factory,
   EntryPointSimulations__factory,
-} from "account-abstraction-anony-utils/dist/src/types";
+} from "aa-conla-sdk";
 import EntryPointSimulationsJson from "@account-abstraction/contracts/artifacts/EntryPointSimulations.json";
 import { IEntryPoint__factory, SimpleAccount__factory } from "../types";
-import erc20ABI from "./erc20abi.json";
 
-const MNEMONIC = "test test test test test test test test test test test junk";
-const entryPointAddress = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
-const rpcUrl = "http://localhost:8545";
-const bundlerUrl = "http://localhost:3000/rpc";
+// const MNEMONIC = 'test test test test test test test test test test test junk'
+const MNEMONIC =
+  "skate eight behind action easy maximum rigid cycle surround solar warm world";
+const entryPointAddress = "0x3bFc49341Aae93e30F6e2BE5a7Fa371cEbd5bea4";
+const rpcUrl = "https://rpc.testnet.conla.com";
+const bundlerUrl = "https://aa-bundler.conla.com/rpc";
 const provider = new JsonRpcProvider(rpcUrl);
 const token = "0x5aA74b97C775539256e0C08875c4F6B2109af19E"; // Address of the ERC-20 token
-const beneficiary = "0xd21934eD8eAf27a67f0A70042Af50A1D6d195E81";
-const paymaster = "0x01711D53eC9f165f3242627019c41CcA7028e7A5";
+const beneficiary = "0xEE35dA6bA29cc1A60d0d9042fa8c88CbEA6d12c0";
+const paymaster = "0x26E68f18CE130B8d4A0A6f5A2e628e89d0b51FC6";
+const bundlerBackendUrl = "http://localhost:3030";
 
 export interface ValidationData {
   aggregator: string;
@@ -38,41 +46,69 @@ export interface ValidationData {
 }
 
 async function main() {
-  const paymasterAPI = new PaymasterAPI(entryPointAddress, bundlerUrl);
+  const paymasterAPI = new PaymasterAPI(bundlerBackendUrl);
+  const owner0 = ethers.Wallet.fromMnemonic(
+    MNEMONIC,
+    "m/44'/60'/0'/0/0"
+  ).connect(provider);
+  const owner = ethers.Wallet.fromMnemonic(
+    MNEMONIC,
+    "m/44'/60'/0'/0/3"
+  ).connect(provider);
 
-  const entryPoint = IEntryPoint__factory.connect(
-    entryPointAddress,
-    provider.getSigner()
-  );
-  const owner = ethers.Wallet.fromMnemonic(MNEMONIC).connect(provider);
-  console.log("before", await provider.getBalance(entryPoint.address));
-  const signer = await provider.getSigner();
-  await signer.sendTransaction({ to: beneficiary, value: parseEther("2") });
+  // console.log("wallet", owner.address)
+  // await owner0.sendTransaction({ to: owner.address, value: parseEther('15') })
 
-  await entryPoint.depositTo(paymaster, { value: parseEther("2") });
-  await entryPoint.depositTo(beneficiary, { value: parseEther("2") });
-  console.log(
-    "paymaster balance before",
-    await entryPoint.balanceOf(paymaster)
-  );
-  console.log(
-    "beneficiary balance before",
-    await provider.getBalance(beneficiary)
-  );
+  const entryPoint = IEntryPoint__factory.connect(entryPointAddress, owner);
+  // console.log('before', await provider.getBalance(entryPoint.address))
+  // console.log('signer', formatEther(await owner.getBalance()))
+  // console.log('signer', owner.getAddress())
+  // await owner.sendTransaction({ to: beneficiary, value: parseEther('2') })
+
+  // await entryPoint.depositTo(paymaster, { value: parseEther('2') })
+  // await entryPoint.depositTo(beneficiary, { value: parseEther('2') })
+  // console.log("paymaster balance before", formatEther(await entryPoint.balanceOf(paymaster)))
+  // const paymasterBalanceBefore = await entryPoint.balanceOf(paymaster)
+  // console.log("beneficiary balance before", formatEther(await provid  er.getBalance(beneficiary)))
+
   const detDeployer = new DeterministicDeployer(provider);
   const factoryAddress = await detDeployer.deterministicDeploy(
     new SimpleAccountFactory__factory(),
     0,
     [entryPointAddress]
   );
+  const accountFactory = new SimpleAccountFactory__factory(owner).attach(
+    factoryAddress
+  );
+  // await (await accountFactory).createAccount(owner.address, 0)
 
-  await sendErc20(owner, factoryAddress, paymasterAPI);
-  await sendNative(owner, factoryAddress, paymasterAPI);
+  // const accountFactory = _factory ?? await new SimpleAccountFactory__factory(ethersSigner).deploy(entryPoint)
+  // const implementation = await accountFactory.accountImplementation()
+  // await accountFactory.createAccount(accountOwner, 0)
+  // const accountAddress = await accountFactory.getAddress(accountOwner, 0)
+  // const proxy = SimpleAccount__factory.connect(accountAddress, ethersSigner)
+  // return {
+  //   implementation,
+  //   accountFactory,
+  //   proxy
+  // }
 
-  console.log("paymaster balance after", await entryPoint.balanceOf(paymaster));
+  // await sendErc20(owner, factoryAddress, paymasterAPI)
+  await sendNative(owner, (await accountFactory).address, paymasterAPI);
+
+  console.log(
+    "paymaster balance after",
+    formatEther(await entryPoint.balanceOf(paymaster))
+  );
   console.log(
     "beneficiary balance after",
-    await provider.getBalance(beneficiary)
+    formatEther(await provider.getBalance(beneficiary))
+  );
+  console.log(
+    "default owner balance after",
+    formatEther(
+      await provider.getBalance("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+    )
   );
 }
 
@@ -90,132 +126,77 @@ async function sendNative(
     owner: owner,
     factoryAddress: factoryAddress,
     paymasterAPI: paymasterAPI,
+    bundlerUrl: bundlerBackendUrl,
   });
 
-  const accountContract = await accountAPI._getAccountContract();
-  const signer = await provider.getSigner();
-
-  await signer.sendTransaction({
-    to: accountContract.address,
-    value: parseEther("1"),
-  });
-
-  console.log(
-    "account contract balance before",
-    await provider.getBalance(accountContract.address)
-  );
-  console.log(
-    "owner contract balance before",
-    await provider.getBalance(owner.address)
-  );
-  console.log("dest balance before", await provider.getBalance(dest.address));
+  const gasPrice = await provider.getGasPrice();
+  const value = parseEther("0.1");
 
   const op = await accountAPI.createSignedUserOp({
-    target: dest.address,
+    target: "0xeF2167037aC297fa711FD3bB228543D58c82AFd6",
     data: "0x",
-    value: parseEther("0.12"),
+    value: value,
+    maxFeePerGas: gasPrice,
+    maxPriorityFeePerGas: gasPrice,
   });
 
-  const chainId = await provider.getNetwork().then((net) => net.chainId);
-  const client = new HttpRpcClient(bundlerUrl, entryPointAddress, chainId);
-
-  const userOpHash = await client.sendUserOpToBundler(op);
-
-  console.log("Waiting for transaction...");
-  const transactionHash = await accountAPI.getUserOpReceipt(userOpHash);
-  console.log(`Transaction hash: ${transactionHash}`);
-
-  console.log(
-    "account contract balance after",
-    await provider.getBalance(accountContract.address)
-  );
-  console.log(
-    "owner contract balance after",
-    await provider.getBalance(owner.address)
-  );
-  console.log(
-    "dest contract balance after",
-    await provider.getBalance(dest.address)
-  );
-
+  // const packeUserOp = await packUserOp(op)
+  // console.log("packeUserOp",packeUserOp)
+  const tx = await accountAPI.sendHandlerOps([op]);
+  console.log("tx hash: ", tx);
   console.log("--- COMPLETE SENDING NATIVE TOKEN ---");
 }
 
-async function sendErc20(
-  owner: ethers.Wallet,
-  factoryAddress: string,
-  paymasterAPI: PaymasterAPI
-) {
-  const value = "1230"; // Amount of the ERC-20 token to transfer
+// async function sendErc20(owner: ethers.Wallet, factoryAddress: string, paymasterAPI: PaymasterAPI) {
+//   const value = '1230' // Amount of the ERC-20 token to transfer
 
-  const erc20 = new ethers.Contract(token, erc20ABI, provider);
-  const amount = ethers.utils.parseUnits(value);
-  const dest = ethers.Wallet.createRandom();
+//   const erc20 = new ethers.Contract(token, erc20ABI, provider)
+//   const amount = ethers.utils.parseUnits(value)
+//   const dest = ethers.Wallet.createRandom()
 
-  const approve = erc20.interface.encodeFunctionData("approve", [
-    dest.address,
-    amount,
-  ]);
-  const transfer = erc20.interface.encodeFunctionData("transfer", [
-    dest.address,
-    amount,
-  ]);
+//   const approve = erc20.interface.encodeFunctionData('approve', [dest.address, amount])
+//   const transfer = erc20.interface.encodeFunctionData('transfer', [dest.address, amount])
 
-  const accountAPI = new SimpleAccountAPI({
-    provider,
-    entryPointAddress,
-    owner,
-    factoryAddress,
-    paymasterAPI,
-  });
+//   const accountAPI = new SimpleAccountAPI({
+//     provider,
+//     entryPointAddress,
+//     owner,
+//     factoryAddress,
+//     paymasterAPI
+//   })
 
-  const signer = await provider.getSigner();
+//   const signer = await provider.getSigner()
 
-  const accountContract = await accountAPI._getAccountContract();
-  console.log("--- START SENDING ERC20 TOKEN ---");
-  await signer.sendTransaction({
-    to: accountContract.address,
-    value: parseEther("0.1"),
-  });
+//   const accountContract = await accountAPI._getAccountContract()
+//   console.log('--- START SENDING ERC20 TOKEN ---')
+//   await signer.sendTransaction({ to: accountContract.address, value: parseEther('0.1') })
 
-  console.log("onwer balance before", await owner.getBalance());
-  console.log(
-    "account contract balance before",
-    await provider.getBalance(accountContract.address)
-  );
-  console.log(
-    "owner erc20 balance before",
-    await erc20.balanceOf(owner.address)
-  );
-  console.log("dest erc20 balance before", await erc20.balanceOf(dest.address));
+//   console.log('onwer balance before', await owner.getBalance())
+//   console.log('account contract balance before', await provider.getBalance(accountContract.address))
+//   console.log('owner erc20 balance before', await erc20.balanceOf(owner.address))
+//   console.log('dest erc20 balance before', await erc20.balanceOf(dest.address))
 
-  const op = await accountAPI.createSignedUserOp({
-    target: token,
-    data: transfer,
-    value: 0,
-  });
+//   const op = await accountAPI.createSignedUserOp({
+//     target: token,
+//     data: transfer,
+//     value: 0
+//   })
 
-  const chainId = await provider.getNetwork().then((net) => net.chainId);
-  const client = new HttpRpcClient(bundlerUrl, entryPointAddress, chainId);
-  const userOpHash = await client.sendUserOpToBundler(op);
+//   const chainId = await provider.getNetwork().then(net => net.chainId)
+//   const client = new HttpRpcClient(bundlerUrl, entryPointAddress, chainId)
+//   const userOpHash = await client.sendUserOpToBundler(op)
 
-  console.log("Waiting for transaction...");
-  const transactionHash = await accountAPI.getUserOpReceipt(userOpHash);
-  console.log(`Transaction hash: ${transactionHash}`);
+//   console.log('Waiting for transaction...')
+//   const transactionHash = await accountAPI.getUserOpReceipt(userOpHash)
+//   console.log(`Transaction hash: ${transactionHash}`)
 
-  console.log("onwer balance after", await owner.getBalance());
-  console.log(
-    "account contract balance after",
-    await provider.getBalance(accountContract.address)
-  );
-  console.log(
-    "onwer erc20 balance after",
-    await erc20.balanceOf(owner.address)
-  );
-  console.log("dest erc20 balance after", await erc20.balanceOf(dest.address));
+//   console.log('onwer balance after', await owner.getBalance())
+//   console.log('account contract balance after', await provider.getBalance(accountContract.address))
+//   console.log('onwer erc20 balance after', await erc20.balanceOf(owner.address))
+//   console.log('dest erc20 balance after', await erc20.balanceOf(dest.address))
 
-  console.log("--- COMPLETE SENDING ERC20 TOKEN ---");
-}
+//   console.log('--- COMPLETE SENDING ERC20 TOKEN ---')
+// }
 
 void main()
   .catch((e) => {

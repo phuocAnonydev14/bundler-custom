@@ -1,6 +1,6 @@
 {
-  "name": "account-abstraction-anony-utils",
-  "version": "0.6.8",
+  "name": "aa-conla-utils",
+  "version": "0.1.6",
   "main": "./dist/src/index.js",
   "license": "MIT",
   "files": [
@@ -17,7 +17,7 @@
     "sol-ts": "yarn hardhat-compile && yarn tsc"
   },
   "dependencies": {
-    "@account-abstraction/contracts": "^0.6.1",
+    "@account-abstraction/contracts": "^0.7.0",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/abstract-provider": "^5.7.0",
     "@ethersproject/abstract-signer": "^5.7.0",
